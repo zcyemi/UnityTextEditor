@@ -51,8 +51,8 @@ namespace Yemi
         private void Update()
         {
             m_updateCount++;
-            m_updateCount = m_updateCount % 30;
-            if ((m_updateCount % 30) == 9)
+            m_updateCount = m_updateCount % 10;
+            if ((m_updateCount % 10) == 9)
             {
                 this.Repaint();
             }
