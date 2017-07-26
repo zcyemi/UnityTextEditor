@@ -9,6 +9,7 @@ namespace Yemi
     [Serializable]
     public class TextEditorWindow : EditorWindow
     {
+        [SerializeField]
         private static CustomTextEditor m_textEditor;
         private int m_updateCount = 0;
 

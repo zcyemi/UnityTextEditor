@@ -34,7 +34,8 @@ namespace Yemi
 
         private int m_selectLine = 0;
         private int m_selectCol = 0;
-
+        private float m_selectXOff = 0;
+        [SerializeField]
         private List<string> m_data = new List<string>();
 
         private GUIStyle m_textStyle;
@@ -78,7 +79,7 @@ namespace Yemi
                     EvtMouseDown(e.mousePosition);
                     break;
                 case EventType.keyDown:
-                    EvtKeyDown(e.keyCode);
+                    EvtKeyDown(e.keyCode,e);
                     break;
             }
         }
@@ -88,18 +89,27 @@ namespace Yemi
         private void EvtMouseDown(Vector2 pos)
         {
             m_selectLine = Mathf.FloorToInt(pos.y / m_lineHeight);
-            m_cursorCount = 30;
+
+            var content = new GUIContent(m_data[m_selectLine]);
+            var textRect = new Rect(m_lineCodeOff, m_selectLine * m_lineHeight, m_mainRect.width, m_lineHeight);
+            int index = m_textStyle.GetCursorStringIndex(textRect, content, pos);
+
+            var cpos = m_textStyle.GetCursorPixelPosition(textRect, content, index);
+            m_selectXOff = cpos.x;
+            m_selectCol = index;
+
         }
 
-        private void EvtKeyDown(KeyCode code)
+        private void EvtKeyDown(KeyCode code,Event e)
         {
             DataCheck();
 
             if((int)code >=97 && (int)code <=122)
             {
-                m_data[m_selectLine] += code.ToString();
-
-                ShowInfo(m_data[m_selectLine]);
+                string addc = e.shift?code.ToString():code.ToString().ToLower();
+                m_data[m_selectLine] = m_data[m_selectLine].Insert(m_selectCol, addc);
+                m_selectCol++;
+                RefreshTextColPosition();
             }
             if(code == KeyCode.UpArrow)
             {
@@ -109,20 +119,113 @@ namespace Yemi
             {
                 CMDLineDown();
             }
+            else if(code == KeyCode.LeftArrow)
+            {
+                CMDLineLeft();
+            }
+            else if(code == KeyCode.RightArrow)
+            {
+                CMDLineRight();
+            }
+            else if(code == KeyCode.Delete)
+            {
+                CMDDeleteChar();
+            }
         }
 
 
         #endregion
 
+        private Rect GetTextRect() { return new Rect(m_lineCodeOff, m_selectLine * m_lineHeight, m_mainRect.width, m_lineHeight); }
+        private void RefreshTextColPosition()
+        {
+            if (m_selectCol > m_data[m_selectLine].Length)
+                m_selectCol = m_data[m_selectLine].Length;
+
+            var cpos = m_textStyle.GetCursorPixelPosition(GetTextRect(), new GUIContent(m_data[m_selectLine]), m_selectCol);
+            m_selectXOff = cpos.x;
+        }
+
+        private void CMDDeleteChar()
+        {
+            if(m_data[m_selectLine].Length == 0)
+            {
+
+            }
+            else
+            {
+                if(m_selectCol > 0)
+                {
+                    var str = m_data[m_selectLine];
+                    var strn = str.Substring(0, m_selectCol - 1) + str.Substring(m_selectCol);
+                    ShowInfo(strn);
+                    m_data[m_selectLine] = strn;
+                    m_selectCol--;
+                    RefreshTextColPosition();
+                }
+                else
+                {
+
+                }
+            }
+        }
+
         private void CMDLineUp()
         {
             m_selectLine--;
             m_selectLine = m_selectLine < 0 ? 0 : m_selectLine;
+            RefreshTextColPosition();
+
         }
         private void CMDLineDown()
         {
             m_selectLine++;
             m_selectLine = m_selectLine > m_data.Count-1  ? m_data.Count - 1 : m_selectLine;
+
+            RefreshTextColPosition();
+        }
+
+        private void CMDLineLeft()
+        {
+            if(m_selectCol ==0)
+            {
+                if(m_selectLine != 0)
+                {
+                    m_selectLine--;
+                    m_selectCol = m_data[m_selectLine].Length;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                m_selectCol--;
+            }
+
+            RefreshTextColPosition();
+        }
+
+        private void CMDLineRight()
+        {
+            if(m_selectCol == m_data[m_selectLine].Length)
+            {
+                if(m_selectLine < m_data.Count-1)
+                {
+                    m_selectLine++;
+                    m_selectCol = 0;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                m_selectCol++;
+            }
+            RefreshTextColPosition();
         }
 
 
@@ -158,7 +261,7 @@ namespace Yemi
         {
             if (!m_cursorShow) return;
 
-            m_cursorPos.x = m_lineCodeOff + m_selectCol;
+            m_cursorPos.x = m_selectXOff;
             m_cursorPos.y = m_lineHeight * m_selectLine;
             m_cursorPos.width = 2f;
             m_cursorPos.height = m_lineHeight;
@@ -179,7 +282,7 @@ namespace Yemi
 
         private void DataCheck()
         {
-            while(m_data.Count <m_line)
+            while(m_data.Count <=m_line)
             {
                 m_data.Add("");
             }
@@ -193,12 +296,12 @@ namespace Yemi
 
         public static void EditorUpdate()
         {
-            m_cursorCount++;
-            m_cursorCount = m_cursorCount % 60;
-            if(m_cursorCount == 0)
-            {
-                m_cursorShow = !m_cursorShow;
-            }
+            //m_cursorCount++;
+            //m_cursorCount = m_cursorCount % 10;
+            //if(m_cursorCount == 0)
+            //{
+            //    m_cursorShow = !m_cursorShow;
+            //}
         }
 
 
