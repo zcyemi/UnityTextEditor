@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System;
+using System.IO;
 
 namespace Yemi
 {
@@ -39,6 +40,9 @@ namespace Yemi
         private List<string> m_data = new List<string>();
 
         private GUIStyle m_textStyle;
+
+        [SerializeField]
+        public string m_filePath;
 
 
         //keymap
@@ -370,6 +374,27 @@ namespace Yemi
             m_data.RemoveAt(line);
         }
 
+
+        public void CMDSave()
+        {
+            Debug.Log("save");
+        }
+
+        public void CMDOpenFile(string path = null)
+        {
+            if(!string.IsNullOrEmpty(path))
+                m_filePath = path;
+
+            Debug.Log(m_filePath);
+            if (string.IsNullOrEmpty(m_filePath)) return;
+
+
+            string fileFullpath = Application.dataPath.Substring(0, Application.dataPath.Length - 6) + m_filePath;
+            Debug.Log(fileFullpath);
+            m_data = new List<string>(File.ReadAllLines(fileFullpath));
+
+
+        }
 
         private void DrawTexts()
         {

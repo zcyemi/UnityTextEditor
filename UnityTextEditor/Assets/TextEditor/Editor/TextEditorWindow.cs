@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.Callbacks;
 using System;
 
 namespace Yemi
@@ -10,18 +11,24 @@ namespace Yemi
     public class TextEditorWindow : EditorWindow
     {
         [SerializeField]
-        private static CustomTextEditor m_textEditor;
+        private CustomTextEditor m_textEditor;
         private int m_updateCount = 0;
 
         [MenuItem("Window/TextEditor")]
         public static void OpenWindow()
         {
-            CheckResources();
-
-            var window = EditorWindow.GetWindow<TextEditorWindow>();
-            window.Show();
-            
+            GetTextEditor();
         }
+
+        public static TextEditorWindow GetTextEditor()
+        {
+            var window = EditorWindow.GetWindow<TextEditorWindow>();
+            window.CheckResources();
+            window.Show();
+
+            return window;
+        }
+
         static TextEditorWindow()
         {
             EditorApplication.update += EditorUpdate;
@@ -32,12 +39,21 @@ namespace Yemi
             CustomTextEditor.EditorUpdate();
         }
 
-        private static void CheckResources()
+        private void CheckResources()
         {
             if (m_textEditor == null)
             {
                 m_textEditor = new CustomTextEditor();
             }
+        }
+
+        private void OnEnable()
+        {
+            Debug.Log("onEnable");
+
+            CheckResources();
+
+            m_textEditor.CMDOpenFile();
         }
 
         private void OnGUI()
@@ -58,6 +74,25 @@ namespace Yemi
                 this.Repaint();
             }
         }
+
+
+        public void OpenFile(string filepath)
+        {
+            m_textEditor.CMDOpenFile(filepath);
+        }
+
+        [OnOpenAsset]
+        public static bool OpenAssets(int instanceId,int line)
+        {
+
+            string path = AssetDatabase.GetAssetPath(instanceId);
+            if(path.EndsWith(".txt"))
+            {
+                GetTextEditor().OpenFile(path);
+                return true;
+            }
+            return false;
+        } 
     }
 
 }

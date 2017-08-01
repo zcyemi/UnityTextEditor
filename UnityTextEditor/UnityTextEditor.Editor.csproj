@@ -129,6 +129,9 @@
     <Compile Include="Assets\TextEditor\Editor\CustomTextEditor.cs" />
     <Compile Include="Assets\TextEditor\Editor\TextEditorWindow.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\sample.txt" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />
 </Project>
