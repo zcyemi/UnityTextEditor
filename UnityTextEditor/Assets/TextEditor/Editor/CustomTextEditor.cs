@@ -22,6 +22,8 @@ namespace Yemi
         private float m_lineHeight = 16f;
         private int m_line;
 
+        private int m_render_startLine = 0;
+
         private float m_lineCodeOff = 26f;
 
         private Rect m_infoRect;
@@ -31,6 +33,9 @@ namespace Yemi
         private Rect m_cursorPos;
         private static bool m_cursorShow = true;
         private static int m_cursorCount;
+
+        private Rect m_scrollerRect = new Rect(0,0,20,0);
+        private Rect m_scrollerHandleRect;
 
 
         private int m_selectLine = 0;
@@ -109,6 +114,11 @@ namespace Yemi
 
             m_line = Mathf.FloorToInt(m_mainRect.height / m_lineHeight);
 
+            m_scrollerRect.height = rect.height;
+            m_scrollerRect.width = 10;
+            m_scrollerRect.x = rect.width - 10;
+            m_scrollerHandleRect = m_scrollerRect;
+
             ProcessInput();
 
 
@@ -120,10 +130,13 @@ namespace Yemi
 
             DrawTexts();
 
+            DrawScroller();
 
             DrawInfo();
 
             DrawCursor();
+
+            
         }
 
         private void ProcessInput()
@@ -138,6 +151,10 @@ namespace Yemi
                 case EventType.keyDown:
                     EvtKeyDown(e.keyCode,e);
                     break;
+                case EventType.ScrollWheel:
+                    EventScrollWheel(e);
+                    break;
+
             }
         }
 
@@ -145,10 +162,13 @@ namespace Yemi
         #region Event
         private void EvtMouseDown(Vector2 pos)
         {
-            m_selectLine = Mathf.FloorToInt(pos.y / m_lineHeight);
-
+            m_selectLine = Mathf.FloorToInt(pos.y / m_lineHeight) + m_render_startLine;
+            if(m_selectLine >= m_data.Count)
+            {
+                m_selectLine = m_data.Count - 1;
+            }
             var content = new GUIContent(m_data[m_selectLine]);
-            var textRect = new Rect(m_lineCodeOff, m_selectLine * m_lineHeight, m_mainRect.width, m_lineHeight);
+            var textRect = new Rect(m_lineCodeOff, (m_selectLine - m_render_startLine) * m_lineHeight, m_mainRect.width, m_lineHeight);
             int index = m_textStyle.GetCursorStringIndex(textRect, content, pos);
 
             var cpos = m_textStyle.GetCursorPixelPosition(textRect, content, index);
@@ -219,6 +239,19 @@ namespace Yemi
             }
         }
 
+        private void EventScrollWheel(Event e)
+        {
+            int scrollline = Mathf.RoundToInt(e.delta.y);
+            m_render_startLine += scrollline;
+            m_render_startLine = m_render_startLine < 0 ? 0 : m_render_startLine;
+
+            if(m_render_startLine > m_data.Count - m_line)
+            {
+                m_render_startLine = m_data.Count - m_line;
+            }
+
+
+        }
 
         #endregion
 
@@ -268,7 +301,6 @@ namespace Yemi
                 }
             }
         }
-
         private void CMDLineUp()
         {
             m_selectLine--;
@@ -283,14 +315,12 @@ namespace Yemi
 
             RefreshTextColPosition();
         }
-
         private void CMDInsertString(int line,int col,string c)
         {
             m_data[line] = m_data[m_selectLine].Insert(col, c);
             m_selectCol+= c.Length;
             RefreshTextColPosition();
         }
-
         private void CMDLineLeft()
         {
             if(m_selectCol ==0)
@@ -312,7 +342,6 @@ namespace Yemi
 
             RefreshTextColPosition();
         }
-
         private void CMDLineRight()
         {
             if(m_selectCol == m_data[m_selectLine].Length)
@@ -333,7 +362,6 @@ namespace Yemi
             }
             RefreshTextColPosition();
         }
-
         private void CMDLineReturn()
         {
             string curline = m_data[m_selectLine];
@@ -348,13 +376,10 @@ namespace Yemi
 
             RefreshTextColPosition();
         }
-
         private int CMDGetLineLength(int line)
         {
             return m_data[line].Length;
         }
-
-
         private void CMDSetPosToLineEnd()
         {
             if(m_data.Count >m_selectLine)
@@ -363,23 +388,18 @@ namespace Yemi
             }
 
         }
-
         private void CMDInsertLine(int line)
         {
             m_data.Insert(line, "");
         }
-
         private void CMDRemoveLine(int line)
         {
             m_data.RemoveAt(line);
         }
-
-
         public void CMDSave()
         {
             Debug.Log("save");
         }
-
         public void CMDOpenFile(string path = null)
         {
             if(!string.IsNullOrEmpty(path))
@@ -409,14 +429,16 @@ namespace Yemi
 
             for (int i=0;i<m_line;i++)
             {
+                if ((m_render_startLine + i) >= m_data.Count) return;
+
                 //line bg
                 if (i % 2 == 1) EditorGUI.DrawRect(lineRect, m_colBgLine);
 
                 //line code
-                GUI.Label(lineCodeRect, (i+1).ToString());
+                GUI.Label(lineCodeRect, (m_render_startLine+ i + 1).ToString());
 
                 //text
-                GUI.Label(lineRect, m_data[i], m_textStyle);
+                GUI.Label(lineRect, m_data[m_render_startLine+i], m_textStyle);
 
                 lineRect.y += m_lineHeight;
                 lineCodeRect.y += m_lineHeight;
@@ -429,7 +451,7 @@ namespace Yemi
             if (!m_cursorShow) return;
 
             m_cursorPos.x = m_selectXOff;
-            m_cursorPos.y = m_lineHeight * m_selectLine;
+            m_cursorPos.y = m_lineHeight * (m_selectLine - m_render_startLine);
             m_cursorPos.width = 2f;
             m_cursorPos.height = m_lineHeight;
 
@@ -440,6 +462,21 @@ namespace Yemi
         {
             EditorGUI.DrawRect(m_infoRect, m_colInfo);
             GUI.Label(m_infoRect, m_infoContext);
+        }
+
+        private void DrawScroller()
+        {
+            if (m_data.Count <= m_line) return;
+
+            EditorGUI.DrawRect(m_scrollerRect, Color.black);
+
+            float percent = m_line * 1.0f / m_data.Count;
+
+            m_scrollerHandleRect.height = m_scrollerRect.height * percent;
+            m_scrollerHandleRect.y = m_render_startLine * 1.0f / m_data.Count * m_scrollerRect.height;
+
+            EditorGUI.DrawRect(m_scrollerHandleRect, m_colLineCode);
+
         }
 
         private void ShowInfo(object o)
@@ -460,6 +497,7 @@ namespace Yemi
                 m_textStyle.normal.textColor = m_colText;
             }
         }
+
 
         public static void EditorUpdate()
         {

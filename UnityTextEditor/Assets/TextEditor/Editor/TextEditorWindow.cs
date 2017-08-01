@@ -59,8 +59,6 @@ namespace Yemi
         private void OnGUI()
         {
             CheckResources();
-
-
             
             m_textEditor.DrawGui(this.position);
         }
