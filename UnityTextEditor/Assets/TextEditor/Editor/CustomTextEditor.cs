@@ -41,6 +41,59 @@ namespace Yemi
         private GUIStyle m_textStyle;
 
 
+        //keymap
+        private static readonly Dictionary<KeyCode, string> KEYMAP = new Dictionary<KeyCode, string>
+        {
+            {KeyCode.Alpha0,"0" },
+            {KeyCode.Alpha1,"1" },
+            {KeyCode.Alpha2,"2" },
+            {KeyCode.Alpha3,"3" },
+            {KeyCode.Alpha4,"4" },
+            {KeyCode.Alpha5,"5" },
+            {KeyCode.Alpha6,"6" },
+            {KeyCode.Alpha7,"7" },
+            {KeyCode.Alpha8,"8" },
+            {KeyCode.Alpha9,"9" },
+            {KeyCode.Minus,"-" },
+            {KeyCode.Equals,"=" },
+            {KeyCode.BackQuote,"`" },
+            {KeyCode.Comma,"," },
+            {KeyCode.Period,"." },
+            {KeyCode.Slash,"/" },
+            {KeyCode.Semicolon,";" },
+            {KeyCode.Colon,"'" },
+            {KeyCode.LeftBracket,"[" },
+            {KeyCode.RightBracket,"]" },
+            {KeyCode.Backslash,"\\" },
+        };
+
+        private static readonly Dictionary<KeyCode, string> KEYMAP_SHIFT = new Dictionary<KeyCode, string>
+        {
+            {KeyCode.Alpha0,")" },
+            {KeyCode.Alpha1,"!" },
+            {KeyCode.Alpha2,"@" },
+            {KeyCode.Alpha3,"#" },
+            {KeyCode.Alpha4,"$" },
+            {KeyCode.Alpha5,"%" },
+            {KeyCode.Alpha6,"^" },
+            {KeyCode.Alpha7,"&" },
+            {KeyCode.Alpha8,"*" },
+            {KeyCode.Alpha9,"(" },
+            {KeyCode.Minus,"_" },
+            {KeyCode.Equals,"+" },
+            {KeyCode.BackQuote,"~" },
+            {KeyCode.Comma,"<" },
+            {KeyCode.Period,">" },
+            {KeyCode.Slash,"?" },
+            {KeyCode.Semicolon,":" },
+            {KeyCode.Colon,"\"" },
+            {KeyCode.LeftBracket,"{" },
+            {KeyCode.RightBracket,"}" },
+            {KeyCode.Backslash,"|" },
+        };
+
+
+
         public void DrawGui(Rect rect)
         {
             m_mainRect.width = rect.width;
@@ -104,32 +157,61 @@ namespace Yemi
         {
             DataCheck();
 
-            if((int)code >=97 && (int)code <=122)
+            switch(code)
             {
-                string addc = e.shift?code.ToString():code.ToString().ToLower();
-                m_data[m_selectLine] = m_data[m_selectLine].Insert(m_selectCol, addc);
-                m_selectCol++;
-                RefreshTextColPosition();
+                case KeyCode.UpArrow:
+                    CMDLineUp();
+                    return;
+                case KeyCode.DownArrow:
+                    CMDLineDown();
+                    return;
+                case KeyCode.LeftArrow:
+                    CMDLineLeft();
+                    return;
+                case KeyCode.RightArrow:
+                    CMDLineRight();
+                    return;
+                case KeyCode.Backspace:
+                    CMDDeleteChar();
+                    return;
+                case KeyCode.Return:
+                    CMDLineReturn();
+                    return;
+                case KeyCode.KeypadEnter:
+                    CMDLineReturn();
+                    return;
+                case KeyCode.LeftShift:
+
+                    return;
+                case KeyCode.RightShift:
+
+                    return;
+                case KeyCode.LeftControl:
+
+                    return;
+                case KeyCode.RightControl:
+
+                    return;
+                case KeyCode.Space:
+                    CMDInsertString(m_selectLine, m_selectCol, " ");
+                    return;
+                case KeyCode.Tab:
+                    CMDInsertString(m_selectLine, m_selectCol, "\t");
+                    return;
+
             }
-            if(code == KeyCode.UpArrow)
+
+            if ((int)code >= 97 && (int)code <= 122)
             {
-                CMDLineUp();
+                string addc = e.shift ? code.ToString() : code.ToString().ToLower();
+                CMDInsertString(m_selectLine, m_selectCol, addc);
             }
-            else if(code == KeyCode.DownArrow)
+            else
             {
-                CMDLineDown();
-            }
-            else if(code == KeyCode.LeftArrow)
-            {
-                CMDLineLeft();
-            }
-            else if(code == KeyCode.RightArrow)
-            {
-                CMDLineRight();
-            }
-            else if(code == KeyCode.Delete)
-            {
-                CMDDeleteChar();
+
+                var dic = e.shift ? KEYMAP_SHIFT : KEYMAP;
+                if(dic.ContainsKey(code))
+                    CMDInsertString(m_selectLine, m_selectCol, dic[code]);
             }
         }
 
@@ -139,6 +221,8 @@ namespace Yemi
         private Rect GetTextRect() { return new Rect(m_lineCodeOff, m_selectLine * m_lineHeight, m_mainRect.width, m_lineHeight); }
         private void RefreshTextColPosition()
         {
+            if (m_selectLine < 0) m_selectLine = 0;
+
             if (m_selectCol > m_data[m_selectLine].Length)
                 m_selectCol = m_data[m_selectLine].Length;
 
@@ -148,24 +232,35 @@ namespace Yemi
 
         private void CMDDeleteChar()
         {
-            if(m_data[m_selectLine].Length == 0)
+            string curline = m_data[m_selectLine];
+            if (curline.Length ==0)
             {
+                CMDRemoveLine(m_selectLine);
 
+                m_selectLine--;
+                m_selectLine = m_selectLine < 0 ? 0 : m_selectLine;
+                CMDSetPosToLineEnd();
+
+                RefreshTextColPosition();
             }
             else
             {
-                if(m_selectCol > 0)
+                if(m_selectCol == 0)
                 {
-                    var str = m_data[m_selectLine];
-                    var strn = str.Substring(0, m_selectCol - 1) + str.Substring(m_selectCol);
-                    ShowInfo(strn);
-                    m_data[m_selectLine] = strn;
-                    m_selectCol--;
+                    if (m_selectLine == 0) return;
+                    m_selectCol = CMDGetLineLength(m_selectLine-1);
+                    m_data[m_selectLine - 1] += m_data[m_selectLine];
+                    CMDRemoveLine(m_selectLine);
+
+                    m_selectLine--;
                     RefreshTextColPosition();
                 }
                 else
                 {
-
+                    string linestr = m_data[m_selectLine];
+                    m_data[m_selectLine] = linestr.Remove(m_selectCol-1, 1);
+                    m_selectCol--;
+                    RefreshTextColPosition();
                 }
             }
         }
@@ -182,6 +277,13 @@ namespace Yemi
             m_selectLine++;
             m_selectLine = m_selectLine > m_data.Count-1  ? m_data.Count - 1 : m_selectLine;
 
+            RefreshTextColPosition();
+        }
+
+        private void CMDInsertString(int line,int col,string c)
+        {
+            m_data[line] = m_data[m_selectLine].Insert(col, c);
+            m_selectCol+= c.Length;
             RefreshTextColPosition();
         }
 
@@ -226,6 +328,46 @@ namespace Yemi
                 m_selectCol++;
             }
             RefreshTextColPosition();
+        }
+
+        private void CMDLineReturn()
+        {
+            string curline = m_data[m_selectLine];
+            string head = curline.Substring(0, m_selectCol);
+            string tail = curline.Substring(m_selectCol);
+
+            m_data[m_selectLine] = head;
+            m_selectLine++;
+            m_selectCol = 0;
+            CMDInsertLine(m_selectLine);
+            m_data[m_selectLine] = tail;
+
+            RefreshTextColPosition();
+        }
+
+        private int CMDGetLineLength(int line)
+        {
+            return m_data[line].Length;
+        }
+
+
+        private void CMDSetPosToLineEnd()
+        {
+            if(m_data.Count >m_selectLine)
+            {
+                m_selectCol = m_data[m_selectLine].Length;
+            }
+
+        }
+
+        private void CMDInsertLine(int line)
+        {
+            m_data.Insert(line, "");
+        }
+
+        private void CMDRemoveLine(int line)
+        {
+            m_data.RemoveAt(line);
         }
 
 
